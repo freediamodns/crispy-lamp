@@ -59,19 +59,19 @@ Keep the VPS's `.env` and `data/` files local. To deploy later changes, push the
 | --- | --- | --- |
 | `>help` | Everyone | Show available bot commands and access levels. |
 | `>specs <ram_mb> <cores>` | Bot owner (`1481235590283530312`) | Set the per-VPS RAM and CPU limits for new VPSes in this server (e.g. `>specs 127000 24`). |
-| `>create @user` | Bot owner, server owner, or bot admin | Provision a VPS with the configured per-VPS limits; warns if the user already has one. |
+| `>create @user` | Bot owner or configured bot admin | Provision a VPS with the configured per-VPS limits; warns if the user already has one. |
 | `>manage [@user] [vps_number]` | Owner for self; admin for any | Open that VPS's persistent management panel (defaults to VPS #1). |
 | `>stats [@user] [vps_number]` | Owner for self; admin for any | Show the selected VPS's current live usage (defaults to VPS #1). |
 | `>sshx [@user] [vps_number]` | Owner for self; admin for any | Start SSHX for the selected VPS and DM the private link (defaults to VPS #1). |
-| `>delete @user [vps_number]` | Bot owner, server owner, or bot admin | Delete the selected VPS and its stored record (defaults to VPS #1). |
+| `>delete @user [vps_number]` | Bot owner or configured bot admin | Delete the selected VPS and its stored record (defaults to VPS #1). |
 | `>admin add @user` | Bot owner (`1481235590283530312`) | Grant bot-admin access. |
 | `>admin remove @user` | Bot owner (`1481235590283530312`) | Revoke bot-admin access. |
 | `>admins` | Everyone | List configured bot admins. |
 
 ## Operational notes
 
-- Discord user `1481235590283530312` is the bot owner and can manage any VPS. They are also the only account allowed to change VPS specs or add/remove bot admins. The Discord server owner and configured bot admins can manage other members' VPSes.
-- The bot owner, server owner, and configured bot admins can delete another member's VPS with `>delete @user [vps_number]` or request its SSHX link with `>sshx @user [vps_number]`.
+- Discord user `1481235590283530312` is the bot owner and can manage any VPS. They are also the only account allowed to change VPS specs or add/remove bot admins. Server ownership alone does not grant VPS administration rights.
+- The bot owner and configured bot admins can manage or delete another member's VPS with `>delete @user [vps_number]` and request its SSHX link with `>sshx @user [vps_number]`.
 - `>specs 127000 24` sets new VPSes to 127,000 MB RAM and 24 CPU cores. Specs are saved per Discord server; existing containers keep their current limits and the `>create` result and `>manage` panel show each container's actual limits. Until configured, new VPSes default to 32,768 MB RAM and 4 cores.
 - A user may own multiple VPS containers. The first uses `user_<Discord ID>` / `KTS-<Discord ID>`; additional VPSs use `-1`, `-2`, and so on. To select a VPS other than #1, include its number after the optional member, for example `>manage @member 2`. Users managing their own VPS can mention themselves to select a number, e.g. `>stats @self 2`.
 - Existing single-VPS records are treated as VPS #1 and are converted to the multi-VPS format when the user data is next updated.

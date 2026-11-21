@@ -240,9 +240,9 @@ class ManageCog(commands.Cog):
         member: discord.Member,
         vps_number: int = 1,
     ) -> None:
-        """Delete a member's VPS (bot owner, server owner, or bot admin only)."""
+        """Delete a member's VPS (bot owner or configured bot admin only)."""
         if not await is_admin(ctx.author, ctx.guild):
-            await ctx.send("Only the bot owner, server owner, or a bot admin can delete VPSes.")
+            await ctx.send("Only the bot owner or a configured bot admin can delete VPSes.")
             return
         record = await store.get_user(member.id, vps_number)
         if not record:

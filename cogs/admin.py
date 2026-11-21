@@ -25,9 +25,6 @@ class AdminCog(commands.Cog):
     @admin.command(name="add")
     @bot_owner_only()
     async def add(self, ctx: commands.Context, member: discord.Member) -> None:
-        if member.id == ctx.guild.owner_id:
-            await ctx.send("The server owner already has full permissions.")
-            return
         await store.add_admin(member.id)
         await ctx.send(f"✅ {member.mention} is now a bot admin.")
 
@@ -62,10 +59,10 @@ class AdminCog(commands.Cog):
     async def admins(self, ctx: commands.Context) -> None:
         ids = sorted(await store.admins())
         if not ids:
-            await ctx.send("There are no configured bot admins. The server owner always has access.")
+            await ctx.send("There are no configured bot admins. The bot owner retains global access.")
             return
         body = "\n".join(f"• <@{user_id}> (`{user_id}`)" for user_id in ids)
-        await ctx.send(view=text_view("🛡️ KTS Bot Admins", body + "\n\n-# Server owner permissions are automatic and are not listed here."))
+        await ctx.send(view=text_view("🛡️ KTS Bot Admins", body + "\n\n-# Only the bot owner can add or remove admins."))
 
     @commands.command(name="help")
     @commands.guild_only()
@@ -75,17 +72,17 @@ class AdminCog(commands.Cog):
             "`>manage [@user] [vps_number]` — Open a VPS control panel.\n"
             "`>stats [@user] [vps_number]` — View live VPS usage.\n"
             "`>sshx [@user] [vps_number]` — Get a private SSHX terminal link by DM.\n"
-            "`>delete @user [vps_number]` — Delete a VPS (bot owner, server owner, or bot admin).\n"
+            "`>delete @user [vps_number]` — Delete a VPS (bot owner or bot admin).\n"
             "`git clone <repo_url>` — Download a Git repository into your VPS.\n"
             "`git pull` — Update a cloned repository from inside its directory.\n"
             "`>admins` — List bot admins.\n\n"
             "**Bot owner** (`1481235590283530312`)\n"
             "`>specs <ram_mb> <cores>` — Set limits for new VPSes, e.g. `>specs 127000 24`.\n"
             "`>admin add @user` / `>admin remove @user` — Manage bot admins.\n\n"
-            "**Bot owner / server owner / bot admin**\n"
+            "**Bot owner / bot admin**\n"
             "`>create @user` — Create a VPS for a member.\n\n"
             "**Access**\n"
-            "VPS owners can manage their own VPSes. The bot owner, server owner, and bot admins can manage other members' VPSes, "
+            "VPS owners can manage their own VPSes. The bot owner and configured bot admins can manage other members' VPSes, "
             "delete VPSes, and request SSHX for a member. Only the bot owner ID above can change specs or manage bot admins."
         )
         await ctx.send(view=text_view("📖 KTS Bot Help", body))
