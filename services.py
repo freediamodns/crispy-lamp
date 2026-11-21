@@ -389,7 +389,11 @@ docker_service = DockerService()
 
 
 async def is_admin(member: discord.abc.User, guild: discord.Guild | None) -> bool:
-    return bool(guild and member.id == guild.owner_id) or member.id in await store.admins()
+    return (
+        member.id == BOT_OWNER_ID
+        or bool(guild and member.id == guild.owner_id)
+        or member.id in await store.admins()
+    )
 
 
 async def can_manage(member: discord.abc.User, guild: discord.Guild | None, owner_id: int) -> bool:

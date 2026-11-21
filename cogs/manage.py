@@ -232,6 +232,32 @@ class ManageCog(commands.Cog):
         except Exception as exc:
             await ctx.send(**docker_error_kwargs(exc))
 
+    @commands.command(name="delete")
+    @commands.guild_only()
+    async def delete(
+        self,
+        ctx: commands.Context,
+        member: discord.Member,
+        vps_number: int = 1,
+    ) -> None:
+        """Delete a member's VPS (bot owner, server owner, or bot admin only)."""
+        if not await is_admin(ctx.author, ctx.guild):
+            await ctx.send("Only the bot owner, server owner, or a bot admin can delete VPSes.")
+            return
+        record = await store.get_user(member.id, vps_number)
+        if not record:
+            await ctx.send(f"VPS #{vps_number} is not registered for {member.mention}.")
+            return
+        try:
+            container = await docker_service.get(record["container_id"])
+            await docker_service.remove(container)
+            await store.remove_user(member.id, record["container_id"])
+            await ctx.send(
+                f"🗑️ VPS #{vps_number} for {member.mention} was deleted by {ctx.author.mention}."
+            )
+        except Exception as exc:
+            await ctx.send(**docker_error_kwargs(exc))
+
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(ManageCog(bot))

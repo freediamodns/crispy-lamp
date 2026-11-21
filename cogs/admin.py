@@ -75,6 +75,7 @@ class AdminCog(commands.Cog):
             "`>manage [@user] [vps_number]` — Open a VPS control panel.\n"
             "`>stats [@user] [vps_number]` — View live VPS usage.\n"
             "`>sshx [@user] [vps_number]` — Get a private SSHX terminal link by DM.\n"
+            "`>delete @user [vps_number]` — Delete a VPS (bot owner, server owner, or bot admin).\n"
             "`git clone <repo_url>` — Download a Git repository into your VPS.\n"
             "`git pull` — Update a cloned repository from inside its directory.\n"
             "`>admins` — List bot admins.\n\n"
@@ -84,8 +85,8 @@ class AdminCog(commands.Cog):
             "**Bot owner / server owner / bot admin**\n"
             "`>create @user` — Create a VPS for a member.\n\n"
             "**Access**\n"
-            "VPS owners can manage their own VPSes. Bot admins can create VPSes and manage other members' VPSes. "
-            "Only the bot owner ID above can change specs or manage bot admins. The server owner and bot admins can delete VPSes from a panel."
+            "VPS owners can manage their own VPSes. The bot owner, server owner, and bot admins can manage other members' VPSes, "
+            "delete VPSes, and request SSHX for a member. Only the bot owner ID above can change specs or manage bot admins."
         )
         await ctx.send(view=text_view("📖 KTS Bot Help", body))
 
