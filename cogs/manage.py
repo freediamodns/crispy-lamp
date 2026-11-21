@@ -19,6 +19,7 @@ from services import (
     stats_values,
     status_name,
     store,
+    utcnow,
 )
 from ui_components import text_view
 
@@ -169,6 +170,11 @@ class ManagementView(discord.ui.LayoutView):
                     await interaction.followup.send("⚠️ The container is already running.", ephemeral=True)
                     return
                 await docker_service.action(container, "start")
+                await store.update_user(
+                    owner_id,
+                    record["container_id"],
+                    {"last_started_at": utcnow().isoformat()},
+                )
                 message = "▶ Container started."
             elif action == "stop":
                 if state != "running":
@@ -178,6 +184,11 @@ class ManagementView(discord.ui.LayoutView):
                 message = "⏹ Container stopped."
             elif action == "restart":
                 await docker_service.action(container, "restart")
+                await store.update_user(
+                    owner_id,
+                    record["container_id"],
+                    {"last_started_at": utcnow().isoformat()},
+                )
                 message = "🔄 Container restarted."
             else:  # delete
                 await docker_service.remove(container)

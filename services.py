@@ -21,8 +21,6 @@ ADMINS_FILE = DATA_DIR / "admins.json"
 SPECS_FILE = DATA_DIR / "specs.json"
 BANNER_FILE = ROOT / "assets" / "banner.png"
 BOT_OWNER_ID = 1481235590283530312
-DISPLAY_HOST_RAM = "512 GB"
-DISPLAY_HOST_CORES = 40
 LOG = logging.getLogger("ktsbot")
 # ``datetime.UTC`` exists only in Python 3.11+. Keep compatibility with
 # Ubuntu releases that still ship Python 3.10.
@@ -129,6 +127,20 @@ class JsonStore:
             if any(item["vps_number"] == record["vps_number"] for item in records):
                 raise RuntimeError(f"VPS #{record['vps_number']} is already registered.")
             records.append(record)
+            await asyncio.to_thread(self._write, USERS_FILE, users)
+
+    async def update_user(self, user_id: int, container_id: str, updates: dict[str, Any]) -> None:
+        async with self.lock:
+            payload = await asyncio.to_thread(self._read, USERS_FILE, {})
+            users = self._normalize_users(payload)
+            records = users.get(str(user_id), [])
+            record = next(
+                (item for item in records if item.get("container_id") == container_id),
+                None,
+            )
+            if record is None:
+                raise LookupError("This VPS is no longer registered.")
+            record.update(updates)
             await asyncio.to_thread(self._write, USERS_FILE, users)
 
     async def remove_user(self, user_id: int, container_id: str) -> None:
@@ -352,13 +364,18 @@ def status_name(container: Any) -> str:
     return str(container.attrs.get("State", {}).get("Status", "unknown")).capitalize()
 
 
-def uptime(container: Any, created_at: str | None = None) -> str:
+def uptime(
+    container: Any,
+    fallback_started_at: str | None = None,
+    *,
+    fallback_label: str = "creation",
+) -> str:
     if status_name(container).lower() != "running":
         return "Not running"
     started = parse_docker_time(container.attrs.get("State", {}).get("StartedAt"))
     approximate = False
     if not started:
-        started = parse_docker_time(created_at)
+        started = parse_docker_time(fallback_started_at)
         approximate = started is not None
     if not started:
         return "Unavailable"
@@ -367,7 +384,7 @@ def uptime(container: Any, created_at: str | None = None) -> str:
     hours, seconds = divmod(seconds, 3600)
     minutes, _ = divmod(seconds, 60)
     result = f"{days}d {hours}h {minutes}m"
-    return f"~{result} (since creation)" if approximate else result
+    return f"~{result} (since {fallback_label})" if approximate else result
 
 
 def stats_values(
@@ -376,9 +393,7 @@ def stats_values(
 ) -> dict[str, str]:
     memory = payload.get("memory_stats", {})
     raw_usage = memory.get("usage")
-    memory_stats = memory.get("stats", {})
-    cache = memory_stats.get("inactive_file", memory_stats.get("cache", 0))
-    usage = max(0, raw_usage - cache) if isinstance(raw_usage, (int, float)) else 0
+    usage = max(0, raw_usage) if isinstance(raw_usage, (int, float)) else 0
     raw_limit = memory.get("limit")
     limit = raw_limit if isinstance(raw_limit, (int, float)) and raw_limit > 0 else fallback_memory_limit
     cpu = payload.get("cpu_stats", {})
@@ -435,11 +450,10 @@ def management_text(record: dict[str, Any], container: Any, live: dict[str, str]
         f"**Container:** `{record['container_name']}` (`{record['container_id'][:12]}`)",
         f"**Status:** {status_name(container)}",
         "**OS:** Ubuntu 24.04",
-        f"**Host Capacity:** {DISPLAY_HOST_RAM} RAM • {DISPLAY_HOST_CORES} cores",
         f"**RAM Usage:** {live['ram'] if live else 'Start container for live data'}",
         f"**VPS RAM Limit:** {live['limit'] if live else display_bytes(ram_mb * 1024**2)}",
         f"**VPS CPU Limit:** {cores:g} cores",
-        f"**Uptime:** {uptime(container, record.get('created_at'))}",
+        f"**Uptime:** {uptime(container, record.get('last_started_at') or record.get('created_at'), fallback_label='last start' if record.get('last_started_at') else 'creation')}",
         f"**Creation Date:** {discord.utils.format_dt(created, 'F') if created else 'Unknown'}",
         *state_lines,
         "",

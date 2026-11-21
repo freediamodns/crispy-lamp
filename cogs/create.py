@@ -12,8 +12,6 @@ from services import (
     DockerService,
     container_specs,
     display_bytes,
-    DISPLAY_HOST_CORES,
-    DISPLAY_HOST_RAM,
     docker_error_kwargs,
     docker_service,
     is_admin,
@@ -52,6 +50,7 @@ class CreateCog(commands.Cog):
                 container, newly_created = await docker_service.create(member.id, vps_number, ram_mb, cores)
                 await docker_service.reload(container)
                 actual_ram_mb, actual_cores = container_specs(container)
+                created_at = datetime.now(UTC).isoformat()
                 record = {
                     "owner_id": member.id,
                     "owner_name": str(member),
@@ -61,7 +60,8 @@ class CreateCog(commands.Cog):
                     "image": DockerService.IMAGE,
                     "ram_mb": actual_ram_mb,
                     "cores": actual_cores,
-                    "created_at": datetime.now(UTC).isoformat(),
+                    "created_at": created_at,
+                    "last_started_at": created_at,
                 }
                 await store.put_user(member.id, record)
             except APIError as exc:
@@ -102,7 +102,6 @@ class CreateCog(commands.Cog):
                     f"**VPS:** #{vps_number}",
                     "**OS:** Ubuntu 24.04",
                     "**Status:** Running",
-                    f"**Host Capacity:** {DISPLAY_HOST_RAM} RAM • {DISPLAY_HOST_CORES} cores",
                     f"**VPS RAM Limit:** {display_bytes(actual_ram_mb * 1024**2)}",
                     f"**VPS CPU Limit:** {actual_cores:g} cores",
                     f"**Created:** {discord.utils.format_dt(datetime.now(UTC), 'F')}",
