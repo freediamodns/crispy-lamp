@@ -342,7 +342,45 @@ class DockerService:
         await asyncio.to_thread(container.remove, force=True)
 
     async def stats(self, container: Any) -> dict[str, Any]:
-        return await asyncio.to_thread(container.stats, stream=False)
+        payload = await asyncio.to_thread(container.stats, stream=False)
+        memory = payload.get("memory_stats", {})
+        usage = memory.get("usage")
+        if not isinstance(usage, (int, float)) or usage <= 0:
+            cgroup_memory = await asyncio.to_thread(self._cgroup_memory, container)
+            if cgroup_memory:
+                memory = dict(memory)
+                memory["usage"], memory["limit"] = cgroup_memory
+                payload = dict(payload)
+                payload["memory_stats"] = memory
+        return payload
+
+    @staticmethod
+    def _cgroup_memory(container: Any) -> tuple[int, int] | None:
+        expected_limit = container.attrs.get("HostConfig", {}).get("Memory", 0)
+        if not expected_limit:
+            return None
+        try:
+            result = container.exec_run(
+                ["sh", "-c", "cat /sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.max"]
+            )
+        except APIError as exc:
+            LOG.warning("Could not read VPS cgroup memory metrics: %s", exc)
+            return None
+        if getattr(result, "exit_code", 1) != 0:
+            return None
+        output = getattr(result, "output", b"")
+        if isinstance(output, tuple):
+            output = b"".join(part or b"" for part in output)
+        if isinstance(output, bytes):
+            output = output.decode("ascii", errors="replace")
+        try:
+            usage_text, limit_text = str(output).splitlines()[:2]
+            usage, limit = int(usage_text), int(limit_text)
+        except (ValueError, IndexError):
+            return None
+        if usage < 0 or limit != expected_limit:
+            return None
+        return usage, limit
 
     async def exec(self, container: Any, command: str, *, detach: bool = False) -> Any:
         return await asyncio.to_thread(container.exec_run, ["bash", "-lc", command], detach=detach)
