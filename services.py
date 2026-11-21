@@ -322,7 +322,7 @@ class DockerService:
                 stdin_open=True,
                 restart_policy={"Name": "unless-stopped"},
                 privileged=True,
-                network_mode="host",
+                network_mode="bridge",
                 tmpfs={"/run": "rw,nosuid,nodev", "/run/lock": "rw,nosuid,nodev"},
                 volumes={
                     "/sys/fs/cgroup": {

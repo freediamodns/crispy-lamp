@@ -106,7 +106,7 @@ class CreateCog(commands.Cog):
                     f"**VPS RAM Limit:** {display_bytes(actual_ram_mb * 1024**2)}",
                     f"**VPS CPU Limit:** {actual_cores:g} cores",
                     f"**Created:** {discord.utils.format_dt(datetime.now(UTC), 'F')}",
-                    "**Features:** systemd • privileged Docker-in-Docker/Wings • host networking • curl + nano",
+                    "**Features:** systemd • privileged Docker-in-Docker/Wings • isolated networking • curl + nano",
                     "",
                     "Use `>manage` to open the controls.",
                 )
