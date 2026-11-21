@@ -49,6 +49,7 @@ class CreateCog(commands.Cog):
             try:
                 container, newly_created = await docker_service.create(member.id, vps_number, ram_mb, cores)
                 await docker_service.reload(container)
+                await docker_service.ensure_started_at(container)
                 actual_ram_mb, actual_cores = container_specs(container)
                 created_at = datetime.now(UTC).isoformat()
                 record = {

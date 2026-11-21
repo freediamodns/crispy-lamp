@@ -128,6 +128,7 @@ class ManagementView(discord.ui.LayoutView):
         container_id: str | None,
     ) -> None:
         record, container = await self._load(owner_id, container_id)
+        await docker_service.ensure_started_at(container)
         live = None
         if status_name(container).lower() == "running":
             memory_limit = container_specs(container, record)[0] * 1024**2
@@ -236,6 +237,7 @@ class ManageCog(commands.Cog):
         try:
             container = await docker_service.get(record["container_id"])
             await docker_service.reload(container)
+            await docker_service.ensure_started_at(container)
             live = None
             if status_name(container).lower() == "running":
                 memory_limit = container_specs(container, record)[0] * 1024**2

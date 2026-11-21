@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -270,6 +270,42 @@ class DockerService:
     async def reload(self, container: Any) -> None:
         await asyncio.to_thread(container.reload)
 
+    async def ensure_started_at(self, container: Any) -> None:
+        state = container.attrs.get("State", {})
+        if parse_docker_time(state.get("StartedAt")) or status_name(container).lower() != "running":
+            return
+        command = (
+            "host_uptime=$(awk 'NR == 1 {print $1}' /proc/uptime); "
+            "start_ticks=$(awk '{sub(/^.*\\) /, \"\"); print $20}' /proc/1/stat); "
+            "ticks_per_second=$(getconf CLK_TCK); "
+            "awk -v host=\"$host_uptime\" -v start=\"$start_ticks\" "
+            "-v hz=\"$ticks_per_second\" "
+            "'BEGIN { if (hz > 0 && host >= start / hz) "
+            "printf \"%.0f\\n\", host - start / hz; else exit 1}'"
+        )
+        try:
+            result = await asyncio.to_thread(
+                container.exec_run,
+                ["sh", "-c", command],
+            )
+        except APIError as exc:
+            LOG.warning("Could not infer VPS start time from PID 1: %s", exc)
+            return
+        if getattr(result, "exit_code", 1) != 0:
+            return
+        output = getattr(result, "output", b"")
+        if isinstance(output, tuple):
+            output = b"".join(part or b"" for part in output)
+        if isinstance(output, bytes):
+            output = output.decode("ascii", errors="replace")
+        try:
+            elapsed = int(str(output).strip())
+        except ValueError:
+            return
+        if elapsed < 0:
+            return
+        state["StartedAt"] = (utcnow() - timedelta(seconds=elapsed)).isoformat()
+
     async def create(self, owner_id: int, vps_number: int, ram_mb: int, cores: int):
         client = await self.client()
         await self.ensure_image(client)
@@ -359,9 +395,24 @@ class DockerService:
         expected_limit = container.attrs.get("HostConfig", {}).get("Memory", 0)
         if not expected_limit:
             return None
+        command = (
+            "set -eu; "
+            "path=$(awk -F: '$1 == \"0\" {print $3; exit}' /proc/1/cgroup); "
+            "path=${path#/}; "
+            "if [ -r /sys/fs/cgroup/memory.current ]; then "
+            "dir=/sys/fs/cgroup${path:+/$path}; "
+            "if [ -r \"$dir/memory.current\" ] && [ -r \"$dir/memory.max\" ]; then "
+            "cat \"$dir/memory.current\" \"$dir/memory.max\"; "
+            "else cat /sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.max; fi; "
+            "else "
+            "path=$(awk -F: '$2 ~ /(^|,)memory(,|$)/ {print $3; exit}' /proc/1/cgroup); "
+            "dir=/sys/fs/cgroup/memory${path:+/$path}; "
+            "cat \"$dir/memory.usage_in_bytes\" \"$dir/memory.limit_in_bytes\"; "
+            "fi"
+        )
         try:
             result = container.exec_run(
-                ["sh", "-c", "cat /sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.max"]
+                ["sh", "-c", command]
             )
         except APIError as exc:
             LOG.warning("Could not read VPS cgroup memory metrics: %s", exc)
@@ -405,24 +456,19 @@ def status_name(container: Any) -> str:
 def uptime(
     container: Any,
     fallback_started_at: str | None = None,
-    *,
-    fallback_label: str = "creation",
 ) -> str:
     if status_name(container).lower() != "running":
         return "Not running"
     started = parse_docker_time(container.attrs.get("State", {}).get("StartedAt"))
-    approximate = False
     if not started:
         started = parse_docker_time(fallback_started_at)
-        approximate = started is not None
     if not started:
         return "Unavailable"
     seconds = max(0, int((utcnow() - started).total_seconds()))
     days, seconds = divmod(seconds, 86400)
     hours, seconds = divmod(seconds, 3600)
     minutes, _ = divmod(seconds, 60)
-    result = f"{days}d {hours}h {minutes}m"
-    return f"~{result} (since {fallback_label})" if approximate else result
+    return f"{days}d {hours}h {minutes}m"
 
 
 def stats_values(
@@ -491,7 +537,7 @@ def management_text(record: dict[str, Any], container: Any, live: dict[str, str]
         f"**RAM Usage:** {live['ram'] if live else 'Start container for live data'}",
         f"**VPS RAM Limit:** {live['limit'] if live else display_bytes(ram_mb * 1024**2)}",
         f"**VPS CPU Limit:** {cores:g} cores",
-        f"**Uptime:** {uptime(container, record.get('last_started_at') or record.get('created_at'), fallback_label='last start' if record.get('last_started_at') else 'creation')}",
+        f"**Uptime:** {uptime(container, record.get('last_started_at'))}",
         f"**Creation Date:** {discord.utils.format_dt(created, 'F') if created else 'Unknown'}",
         *state_lines,
         "",

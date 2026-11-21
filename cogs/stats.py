@@ -33,6 +33,7 @@ async def build_stats_view(
         raise LookupError(f"{name} is not registered for this user.")
     container = await docker_service.get(record["container_id"])
     await docker_service.reload(container)
+    await docker_service.ensure_started_at(container)
     if status_name(container).lower() != "running":
         raise RuntimeError("The container must be running to retrieve live statistics.")
     memory_limit = container_specs(container, record)[0] * 1024**2
@@ -47,7 +48,7 @@ async def build_stats_view(
             f"**RAM Limit:** {values['limit']}",
             f"**Network RX:** {values['rx']}",
             f"**Network TX:** {values['tx']}",
-            f"**Uptime:** {uptime(container, record.get('last_started_at') or record.get('created_at'), fallback_label='last start' if record.get('last_started_at') else 'creation')}",
+            f"**Uptime:** {uptime(container, record.get('last_started_at'))}",
             f"**Status:** {status_name(container)}",
             "",
             f"-# Container: {record['container_name']} • Refresh using the panel",
