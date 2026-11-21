@@ -58,18 +58,18 @@ Keep the VPS's `.env` and `data/` files local. To deploy later changes, push the
 | Command | Access | Purpose |
 | --- | --- | --- |
 | `>help` | Everyone | Show available bot commands and access levels. |
-| `>specs <ram_mb> <cores>` | Server owner | Set the per-VPS RAM and CPU limits for new VPSes in this server (e.g. `>specs 127000 24`). |
+| `>specs <ram_mb> <cores>` | Bot owner (`1481235590283530312`) | Set the per-VPS RAM and CPU limits for new VPSes in this server (e.g. `>specs 127000 24`). |
 | `>create @user` | Server owner / bot admin | Provision a VPS with the configured per-VPS limits; warns if the user already has one. |
 | `>manage [@user] [vps_number]` | Owner for self; admin for any | Open that VPS's persistent management panel (defaults to VPS #1). |
 | `>stats [@user] [vps_number]` | Owner for self; admin for any | Show the selected VPS's current live usage (defaults to VPS #1). |
 | `>sshx [@user] [vps_number]` | Owner for self; admin for any | Start SSHX for the selected VPS and DM the private link (defaults to VPS #1). |
-| `>admin add @user` | Server owner | Grant bot-admin access. |
-| `>admin remove @user` | Server owner | Revoke bot-admin access. |
+| `>admin add @user` | Bot owner (`1481235590283530312`) | Grant bot-admin access. |
+| `>admin remove @user` | Bot owner (`1481235590283530312`) | Revoke bot-admin access. |
 | `>admins` | Everyone | List configured bot admins. |
 
 ## Operational notes
 
-- The server owner always has full permission and is never required in `admins.json`.
+- Discord user `1481235590283530312` is the bot owner and is the only account allowed to change VPS specs or add/remove bot admins. The Discord server owner retains the separate VPS permissions described above.
 - `>specs 127000 24` sets new VPSes to 127,000 MB RAM and 24 CPU cores. Specs are saved per Discord server; existing containers keep their current limits and the `>create` result and `>manage` panel show each container's actual limits. Until configured, new VPSes default to 32,768 MB RAM and 4 cores.
 - A user may own multiple VPS containers. The first uses `user_<Discord ID>` / `KTS-<Discord ID>`; additional VPSs use `-1`, `-2`, and so on. To select a VPS other than #1, include its number after the optional member, for example `>manage @member 2`. Users managing their own VPS can mention themselves to select a number, e.g. `>stats @self 2`.
 - Existing single-VPS records are treated as VPS #1 and are converted to the multi-VPS format when the user data is next updated.

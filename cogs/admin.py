@@ -6,10 +6,12 @@ from discord.ext import commands
 from services import store
 from ui_components import text_view
 
+BOT_OWNER_ID = 1481235590283530312
 
-def owner_only():
+
+def bot_owner_only():
     async def predicate(ctx: commands.Context) -> bool:
-        return bool(ctx.guild and ctx.author.id == ctx.guild.owner_id)
+        return ctx.author.id == BOT_OWNER_ID
     return commands.check(predicate)
 
 
@@ -23,7 +25,7 @@ class AdminCog(commands.Cog):
         await ctx.send("Use `>admin add @user` or `>admin remove @user`.")
 
     @admin.command(name="add")
-    @owner_only()
+    @bot_owner_only()
     async def add(self, ctx: commands.Context, member: discord.Member) -> None:
         if member.id == ctx.guild.owner_id:
             await ctx.send("The server owner already has full permissions.")
@@ -32,14 +34,14 @@ class AdminCog(commands.Cog):
         await ctx.send(f"✅ {member.mention} is now a bot admin.")
 
     @admin.command(name="remove")
-    @owner_only()
+    @bot_owner_only()
     async def remove(self, ctx: commands.Context, member: discord.Member) -> None:
         await store.remove_admin(member.id)
         await ctx.send(f"✅ Removed {member.mention} from bot admins.")
 
     @commands.command(name="specs")
     @commands.guild_only()
-    @owner_only()
+    @bot_owner_only()
     async def specs(self, ctx: commands.Context, ram_mb: str, cores: str) -> None:
         """Set the per-VPS RAM (MB) and CPU core limits for this server."""
         try:
@@ -78,13 +80,14 @@ class AdminCog(commands.Cog):
             "`git clone <repo_url>` — Download a Git repository into your VPS.\n"
             "`git pull` — Update a cloned repository from inside its directory.\n"
             "`>admins` — List bot admins.\n\n"
-            "**Server owner**\n"
+            "**Bot owner** (`1481235590283530312`)\n"
             "`>specs <ram_mb> <cores>` — Set limits for new VPSes, e.g. `>specs 127000 24`.\n"
-            "`>create @user` — Create a VPS for a member.\n"
             "`>admin add @user` / `>admin remove @user` — Manage bot admins.\n\n"
+            "**Server owner / bot admin**\n"
+            "`>create @user` — Create a VPS for a member.\n\n"
             "**Access**\n"
             "VPS owners can manage their own VPSes. Bot admins can create VPSes and manage other members' VPSes. "
-            "Only the server owner can change specs or manage bot admins. The server owner and bot admins can delete VPSes from a panel."
+            "Only the bot owner ID above can change specs or manage bot admins. The server owner and bot admins can delete VPSes from a panel."
         )
         await ctx.send(view=text_view("📖 KTS Bot Help", body))
 
