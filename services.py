@@ -21,6 +21,8 @@ ADMINS_FILE = DATA_DIR / "admins.json"
 SPECS_FILE = DATA_DIR / "specs.json"
 BANNER_FILE = ROOT / "assets" / "banner.png"
 BOT_OWNER_ID = 1481235590283530312
+DISPLAY_HOST_RAM = "512 GB"
+DISPLAY_HOST_CORES = 40
 LOG = logging.getLogger("ktsbot")
 # ``datetime.UTC`` exists only in Python 3.11+. Keep compatibility with
 # Ubuntu releases that still ship Python 3.10.
@@ -350,17 +352,22 @@ def status_name(container: Any) -> str:
     return str(container.attrs.get("State", {}).get("Status", "unknown")).capitalize()
 
 
-def uptime(container: Any) -> str:
+def uptime(container: Any, created_at: str | None = None) -> str:
     if status_name(container).lower() != "running":
         return "Not running"
     started = parse_docker_time(container.attrs.get("State", {}).get("StartedAt"))
+    approximate = False
+    if not started:
+        started = parse_docker_time(created_at)
+        approximate = started is not None
     if not started:
         return "Unavailable"
     seconds = max(0, int((utcnow() - started).total_seconds()))
     days, seconds = divmod(seconds, 86400)
     hours, seconds = divmod(seconds, 3600)
     minutes, _ = divmod(seconds, 60)
-    return f"{days}d {hours}h {minutes}m"
+    result = f"{days}d {hours}h {minutes}m"
+    return f"~{result} (since creation)" if approximate else result
 
 
 def stats_values(
@@ -428,10 +435,11 @@ def management_text(record: dict[str, Any], container: Any, live: dict[str, str]
         f"**Container:** `{record['container_name']}` (`{record['container_id'][:12]}`)",
         f"**Status:** {status_name(container)}",
         "**OS:** Ubuntu 24.04",
+        f"**Host Capacity:** {DISPLAY_HOST_RAM} RAM • {DISPLAY_HOST_CORES} cores",
         f"**RAM Usage:** {live['ram'] if live else 'Start container for live data'}",
-        f"**RAM Limit:** {live['limit'] if live else display_bytes(ram_mb * 1024**2)}",
-        f"**CPU Limit:** {cores:g} cores",
-        f"**Uptime:** {uptime(container)}",
+        f"**VPS RAM Limit:** {live['limit'] if live else display_bytes(ram_mb * 1024**2)}",
+        f"**VPS CPU Limit:** {cores:g} cores",
+        f"**Uptime:** {uptime(container, record.get('created_at'))}",
         f"**Creation Date:** {discord.utils.format_dt(created, 'F') if created else 'Unknown'}",
         *state_lines,
         "",

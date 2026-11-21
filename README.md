@@ -71,6 +71,7 @@ Keep the VPS's `.env` and `data/` files local. To deploy later changes, push the
 
 - Discord user `1481235590283530312` is the bot owner and is the only account allowed to change VPS specs or add/remove bot admins. The Discord server owner retains the separate VPS permissions described above.
 - `>specs 127000 24` sets new VPSes to 127,000 MB RAM and 24 CPU cores. Specs are saved per Discord server; existing containers keep their current limits and the `>create` result and `>manage` panel show each container's actual limits. Until configured, new VPSes default to 32,768 MB RAM and 4 cores.
+- Create and manage panels show the configured host capacity label (512 GB RAM / 40 cores) separately from each VPS's actual Docker limits. The host-capacity label is informational and does not change per-VPS allocations.
 - A user may own multiple VPS containers. The first uses `user_<Discord ID>` / `KTS-<Discord ID>`; additional VPSs use `-1`, `-2`, and so on. To select a VPS other than #1, include its number after the optional member, for example `>manage @member 2`. Users managing their own VPS can mention themselves to select a number, e.g. `>stats @self 2`.
 - Existing single-VPS records are treated as VPS #1 and are converted to the multi-VPS format when the user data is next updated.
 - New containers use a locally built Ubuntu image with systemd as PID 1, plus Git, `curl`, `nano`, and `ca-certificates`. The first creation builds this image and requires the Docker daemon to have network access to Ubuntu package repositories.

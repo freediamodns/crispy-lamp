@@ -47,7 +47,7 @@ async def build_stats_view(
             f"**RAM Limit:** {values['limit']}",
             f"**Network RX:** {values['rx']}",
             f"**Network TX:** {values['tx']}",
-            f"**Uptime:** {uptime(container)}",
+            f"**Uptime:** {uptime(container, record.get('created_at'))}",
             f"**Status:** {status_name(container)}",
             "",
             f"-# Container: {record['container_name']} • Refresh using the panel",
