@@ -378,60 +378,7 @@ class DockerService:
         await asyncio.to_thread(container.remove, force=True)
 
     async def stats(self, container: Any) -> dict[str, Any]:
-        payload = await asyncio.to_thread(container.stats, stream=False)
-        memory = payload.get("memory_stats", {})
-        usage = memory.get("usage")
-        if not isinstance(usage, (int, float)) or usage <= 0:
-            cgroup_memory = await asyncio.to_thread(self._cgroup_memory, container)
-            if cgroup_memory:
-                memory = dict(memory)
-                memory["usage"], memory["limit"] = cgroup_memory
-                payload = dict(payload)
-                payload["memory_stats"] = memory
-        return payload
-
-    @staticmethod
-    def _cgroup_memory(container: Any) -> tuple[int, int] | None:
-        expected_limit = container.attrs.get("HostConfig", {}).get("Memory", 0)
-        if not expected_limit:
-            return None
-        command = (
-            "set -eu; "
-            "path=$(awk -F: '$1 == \"0\" {print $3; exit}' /proc/1/cgroup); "
-            "path=${path#/}; "
-            "if [ -r /sys/fs/cgroup/memory.current ]; then "
-            "dir=/sys/fs/cgroup${path:+/$path}; "
-            "if [ -r \"$dir/memory.current\" ] && [ -r \"$dir/memory.max\" ]; then "
-            "cat \"$dir/memory.current\" \"$dir/memory.max\"; "
-            "else cat /sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.max; fi; "
-            "else "
-            "path=$(awk -F: '$2 ~ /(^|,)memory(,|$)/ {print $3; exit}' /proc/1/cgroup); "
-            "dir=/sys/fs/cgroup/memory${path:+/$path}; "
-            "cat \"$dir/memory.usage_in_bytes\" \"$dir/memory.limit_in_bytes\"; "
-            "fi"
-        )
-        try:
-            result = container.exec_run(
-                ["sh", "-c", command]
-            )
-        except APIError as exc:
-            LOG.warning("Could not read VPS cgroup memory metrics: %s", exc)
-            return None
-        if getattr(result, "exit_code", 1) != 0:
-            return None
-        output = getattr(result, "output", b"")
-        if isinstance(output, tuple):
-            output = b"".join(part or b"" for part in output)
-        if isinstance(output, bytes):
-            output = output.decode("ascii", errors="replace")
-        try:
-            usage_text, limit_text = str(output).splitlines()[:2]
-            usage, limit = int(usage_text), int(limit_text)
-        except (ValueError, IndexError):
-            return None
-        if usage < 0 or limit != expected_limit:
-            return None
-        return usage, limit
+        return await asyncio.to_thread(container.stats, stream=False)
 
     async def exec(self, container: Any, command: str, *, detach: bool = False) -> Any:
         return await asyncio.to_thread(container.exec_run, ["bash", "-lc", command], detach=detach)
@@ -471,15 +418,7 @@ def uptime(
     return f"{days}d {hours}h {minutes}m"
 
 
-def stats_values(
-    payload: dict[str, Any],
-    fallback_memory_limit: int | None = None,
-) -> dict[str, str]:
-    memory = payload.get("memory_stats", {})
-    raw_usage = memory.get("usage")
-    usage = max(0, raw_usage) if isinstance(raw_usage, (int, float)) else 0
-    raw_limit = memory.get("limit")
-    limit = raw_limit if isinstance(raw_limit, (int, float)) and raw_limit > 0 else fallback_memory_limit
+def stats_values(payload: dict[str, Any]) -> dict[str, str]:
     cpu = payload.get("cpu_stats", {})
     previous = payload.get("precpu_stats", {})
     cpu_delta = cpu.get("cpu_usage", {}).get("total_usage", 0) - previous.get("cpu_usage", {}).get("total_usage", 0)
@@ -491,8 +430,6 @@ def stats_values(
     tx = sum(item.get("tx_bytes", 0) for item in networks.values())
     return {
         "cpu": f"{cpu_percent:.2f}%" if cpu_percent is not None else "Unavailable",
-        "ram": display_bytes(usage) if usage > 0 else "Unavailable",
-        "limit": display_bytes(limit) if limit else "Unavailable",
         "rx": display_bytes(rx) if networks else "Unavailable",
         "tx": display_bytes(tx) if networks else "Unavailable",
     }
@@ -517,7 +454,7 @@ def container_specs(container: Any, record: dict[str, Any] | None = None) -> tup
     return memory_mb, cores
 
 
-def management_text(record: dict[str, Any], container: Any, live: dict[str, str] | None = None) -> str:
+def management_text(record: dict[str, Any], container: Any) -> str:
     created = parse_docker_time(record.get("created_at"))
     ram_mb, cores = container_specs(container, record)
     state = container.attrs.get("State", {})
@@ -534,8 +471,7 @@ def management_text(record: dict[str, Any], container: Any, live: dict[str, str]
         f"**Container:** `{record['container_name']}` (`{record['container_id'][:12]}`)",
         f"**Status:** {status_name(container)}",
         "**OS:** Ubuntu 24.04",
-        f"**RAM Usage:** {live['ram'] if live else 'Start container for live data'}",
-        f"**VPS RAM Limit:** {live['limit'] if live else display_bytes(ram_mb * 1024**2)}",
+        f"**VPS RAM Limit:** {display_bytes(ram_mb * 1024**2)}",
         f"**VPS CPU Limit:** {cores:g} cores",
         f"**Uptime:** {uptime(container, record.get('last_started_at'))}",
         f"**Creation Date:** {discord.utils.format_dt(created, 'F') if created else 'Unknown'}",

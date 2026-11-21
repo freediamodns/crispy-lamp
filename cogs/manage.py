@@ -10,13 +10,11 @@ from cogs.stats import build_stats_view
 from services import (
     can_manage,
     container_from_message,
-    container_specs,
     docker_error_kwargs,
     docker_service,
     is_admin,
     management_text,
     owner_from_message,
-    stats_values,
     status_name,
     store,
     utcnow,
@@ -31,11 +29,10 @@ class ManagementView(discord.ui.LayoutView):
         self,
         record: dict | None = None,
         container=None,
-        live: dict[str, str] | None = None,
     ) -> None:
         super().__init__(timeout=None)
         details = (
-            management_text(record, container, live)
+            management_text(record, container)
             if record is not None and container is not None
             else "Open a management panel with `>manage` to load VPS details."
         )
@@ -129,17 +126,10 @@ class ManagementView(discord.ui.LayoutView):
     ) -> None:
         record, container = await self._load(owner_id, container_id)
         await docker_service.ensure_started_at(container)
-        live = None
-        if status_name(container).lower() == "running":
-            memory_limit = container_specs(container, record)[0] * 1024**2
-            live = stats_values(
-                await docker_service.stats(container),
-                fallback_memory_limit=memory_limit,
-            )
         await interaction.message.edit(
             content=None,
             embeds=[],
-            view=ManagementView(record, container, live),
+            view=ManagementView(record, container),
         )
 
     async def perform(self, interaction: discord.Interaction, action: Literal["start", "stop", "restart", "stats", "sshx", "delete"]) -> None:
@@ -238,14 +228,7 @@ class ManageCog(commands.Cog):
             container = await docker_service.get(record["container_id"])
             await docker_service.reload(container)
             await docker_service.ensure_started_at(container)
-            live = None
-            if status_name(container).lower() == "running":
-                memory_limit = container_specs(container, record)[0] * 1024**2
-                live = stats_values(
-                    await docker_service.stats(container),
-                    fallback_memory_limit=memory_limit,
-                )
-            await ctx.send(view=ManagementView(record, container, live))
+            await ctx.send(view=ManagementView(record, container))
         except Exception as exc:
             await ctx.send(**docker_error_kwargs(exc))
 

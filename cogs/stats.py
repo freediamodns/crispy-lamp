@@ -6,6 +6,7 @@ from discord.ext import commands
 from services import (
     can_manage,
     container_specs,
+    display_bytes,
     docker_error_kwargs,
     docker_service,
     stats_values,
@@ -36,16 +37,12 @@ async def build_stats_view(
     await docker_service.ensure_started_at(container)
     if status_name(container).lower() != "running":
         raise RuntimeError("The container must be running to retrieve live statistics.")
-    memory_limit = container_specs(container, record)[0] * 1024**2
-    values = stats_values(
-        await docker_service.stats(container),
-        fallback_memory_limit=memory_limit,
-    )
+    memory_mb, _ = container_specs(container, record)
+    values = stats_values(await docker_service.stats(container))
     body = "\n".join(
         (
             f"**CPU:** {values['cpu']}",
-            f"**RAM Usage:** {values['ram']}",
-            f"**RAM Limit:** {values['limit']}",
+            f"**RAM Limit:** {display_bytes(memory_mb * 1024**2)}",
             f"**Network RX:** {values['rx']}",
             f"**Network TX:** {values['tx']}",
             f"**Uptime:** {uptime(container, record.get('last_started_at'))}",
