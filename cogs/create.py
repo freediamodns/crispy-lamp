@@ -8,6 +8,7 @@ from docker.errors import APIError
 
 from services import (
     BANNER_FILE,
+    BOT_OWNER_ID,
     DockerService,
     container_specs,
     display_bytes,
@@ -29,8 +30,8 @@ class CreateCog(commands.Cog):
     @commands.guild_only()
     async def create(self, ctx: commands.Context, member: discord.Member) -> None:
         """Create the managed Ubuntu VPS for a member (owner/admin only)."""
-        if not await is_admin(ctx.author, ctx.guild):
-            await ctx.send("Only the server owner or a bot admin can create containers.")
+        if ctx.author.id != BOT_OWNER_ID and not await is_admin(ctx.author, ctx.guild):
+            await ctx.send("Only the bot owner, server owner, or a bot admin can create containers.")
             return
         ram_mb, cores = await store.get_specs(ctx.guild.id)
         async with store.user_lock(member.id):

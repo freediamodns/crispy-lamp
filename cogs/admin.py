@@ -3,10 +3,8 @@ from __future__ import annotations
 import discord
 from discord.ext import commands
 
-from services import store
+from services import BOT_OWNER_ID, store
 from ui_components import text_view
-
-BOT_OWNER_ID = 1481235590283530312
 
 
 def bot_owner_only():
@@ -83,7 +81,7 @@ class AdminCog(commands.Cog):
             "**Bot owner** (`1481235590283530312`)\n"
             "`>specs <ram_mb> <cores>` — Set limits for new VPSes, e.g. `>specs 127000 24`.\n"
             "`>admin add @user` / `>admin remove @user` — Manage bot admins.\n\n"
-            "**Server owner / bot admin**\n"
+            "**Bot owner / server owner / bot admin**\n"
             "`>create @user` — Create a VPS for a member.\n\n"
             "**Access**\n"
             "VPS owners can manage their own VPSes. Bot admins can create VPSes and manage other members' VPSes. "

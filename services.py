@@ -20,6 +20,7 @@ USERS_FILE = DATA_DIR / "users.json"
 ADMINS_FILE = DATA_DIR / "admins.json"
 SPECS_FILE = DATA_DIR / "specs.json"
 BANNER_FILE = ROOT / "assets" / "banner.png"
+BOT_OWNER_ID = 1481235590283530312
 LOG = logging.getLogger("ktsbot")
 # ``datetime.UTC`` exists only in Python 3.11+. Keep compatibility with
 # Ubuntu releases that still ship Python 3.10.

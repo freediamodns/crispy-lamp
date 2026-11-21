@@ -59,7 +59,7 @@ Keep the VPS's `.env` and `data/` files local. To deploy later changes, push the
 | --- | --- | --- |
 | `>help` | Everyone | Show available bot commands and access levels. |
 | `>specs <ram_mb> <cores>` | Bot owner (`1481235590283530312`) | Set the per-VPS RAM and CPU limits for new VPSes in this server (e.g. `>specs 127000 24`). |
-| `>create @user` | Server owner / bot admin | Provision a VPS with the configured per-VPS limits; warns if the user already has one. |
+| `>create @user` | Bot owner, server owner, or bot admin | Provision a VPS with the configured per-VPS limits; warns if the user already has one. |
 | `>manage [@user] [vps_number]` | Owner for self; admin for any | Open that VPS's persistent management panel (defaults to VPS #1). |
 | `>stats [@user] [vps_number]` | Owner for self; admin for any | Show the selected VPS's current live usage (defaults to VPS #1). |
 | `>sshx [@user] [vps_number]` | Owner for self; admin for any | Start SSHX for the selected VPS and DM the private link (defaults to VPS #1). |
